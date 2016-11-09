@@ -1,0 +1,60 @@
+#!/bin/bash
+
+function tested() {
+	(cd internal ; go test ./...)
+}
+
+function clean() {
+	rm -rf "$GOPATH1/pkg/"
+}
+
+function tests() {
+	go test --race --timeout=20s $(go list ./... | grep -v vendor)
+}
+
+function benched() {
+	go test -bench=. $(go list ./... | grep -v vendor | grep bench)
+}
+
+function benches() {
+	go test -bench=. $(go list ./... | grep -v vendor)
+}
+
+function convey() {
+  goconvey -excludedDirs ./vendor -port 2222 .
+}
+
+# cover() runs go test profiling for each non vendor package outputing
+# the coverage profile to .profile (making .profile/ if it doesn't exist).
+function cover() {
+	mkdir -p .cover
+	dest=".cover"
+	packages=$(go list ./... | grep -v vendor | grep -v bench | grep -v message)
+	for pkg in $packages; do
+		p=${pkg//\//.}  # replaces ALL '/' with '.'
+		go test -coverprofile "$dest/$p.out" "$pkg"
+    done
+}
+
+function analyze() {
+	local pkg=$1
+	local dest=".cover"
+	mkdir -p "$dest"
+	p=${pgk//\//.}
+    go test -coverprofile "$dest/$p.out" "$pkg"
+	go tool cover -html "$dest/$p.out"
+}
+
+# html() does one of two things, if a html output file is not given
+# then html() lists the contents of the .profile/ directory from which
+# to choose a cover file.
+function html() {
+	local pkg=$1
+	if [[ "$pkg" == "" ]]; then
+		ls -1 .cover
+	else
+		go tool cover -html "$pkg"
+	fi
+}
+
+$1 $2
